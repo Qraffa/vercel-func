@@ -72,9 +72,6 @@ func makeIndex(ba []blog) {
 	searcher.Init(types.EngineOpts{
 		Using:   3,
 		GseDict: "zh",
-		IndexerOpts: &types.IndexerOpts{
-			IndexType: types.LocsIndex,
-		},
 	})
 	defer searcher.Close()
 
