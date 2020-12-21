@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -21,5 +22,5 @@ func TestGet(t *testing.T) {
 }
 
 func TestSearch(t *testing.T) {
-	log.Println(len("验证账户权限"))
+	fmt.Println("212325964a6633aad9460a9a8301093e" == "212325964a6633aad9460a9a8301093e")
 }

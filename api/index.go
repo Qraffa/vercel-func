@@ -1,7 +1,9 @@
 package api
 
 import (
+	"crypto/md5"
 	"encoding/json"
+	"fmt"
 	"github.com/go-ego/riot"
 	"github.com/go-ego/riot/types"
 	"io/ioutil"
@@ -12,8 +14,9 @@ import (
 
 var (
 	// searcher 是协程安全的
-	searcher = riot.Engine{}
-	bs       []blog
+	searcher   = riot.Engine{}
+	bs         []blog
+	contentMD5 [md5.Size]byte
 )
 
 const (
@@ -28,12 +31,18 @@ type blog struct {
 	Tags      []string
 }
 
+type searchRes struct {
+	types.BaseResp
+	Docs []blog
+}
+
 func Handler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	keyword := query.Get("s")
 	log.Print("new search ", keyword)
-	resBlog := search(keyword)
-	bytes, err := json.Marshal(resBlog)
+	log.Print(fmt.Sprintf("index.json md5 ==> %x", contentMD5))
+
+	bytes, err := json.Marshal(search(keyword))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -56,6 +65,8 @@ func getIndex() {
 	}
 	defer res.Body.Close()
 	content, err := ioutil.ReadAll(res.Body)
+	// index.json md5
+	contentMD5 = md5.Sum(content)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -71,23 +82,29 @@ func makeIndex(ba []blog) {
 	// 初始化
 	searcher.Init(types.EngineOpts{
 		Using:   3,
-		GseDict: "zh",
+		//GseDict: "zh",
+		GseDict: "data/dictionary.txt", // for vercel includeFiles
 	})
-
 	for k, v := range ba {
 		searcher.Index(strconv.Itoa(k+1), types.DocData{Content: v.Content})
 	}
 	searcher.Flush()
 }
 
-// 查找文章
-func search(keyword string) []blog {
-	res := make([]blog, 0)
-	if docs, ok := searcher.Search(types.SearchReq{Text: keyword}).Docs.(types.ScoredDocs); ok {
-		for _, v := range docs {
+func search(keyword string) searchRes {
+	res := searcher.Search(types.SearchReq{Text: keyword})
+	baseRes := res.BaseResp
+	docs := make([]blog, 0)
+	if docsRes, ok := res.Docs.(types.ScoredDocs); ok {
+		for k, v := range docsRes {
 			id, _ := strconv.Atoi(v.DocId)
-			res = append(res, bs[id-1])
+			docs = append(docs, bs[id-1])
+			// 不返回content
+			docs[k].Content = ""
 		}
 	}
-	return res
+	return searchRes{
+		BaseResp: baseRes,
+		Docs:     docs,
+	}
 }
