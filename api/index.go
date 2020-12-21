@@ -73,7 +73,6 @@ func makeIndex(ba []blog) {
 		Using:   3,
 		GseDict: "zh",
 	})
-	defer searcher.Close()
 
 	for k, v := range ba {
 		searcher.Index(strconv.Itoa(k+1), types.DocData{Content: v.Content})
